@@ -1,0 +1,9 @@
+apiVersion: ambassadorshim.admiralty.io/v1alpha1
+kind: Mapping
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: mapping-sample
+spec:
+  # Add fields here
+  foo: bar

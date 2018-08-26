@@ -21,8 +21,24 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            prefix:
+              type: string
+            service:
+              type: string
+          required:
+          - prefix
+          - service
           type: object
         status:
+          properties:
+            configured:
+              type: boolean
+            upToDate:
+              type: boolean
+          required:
+          - configured
+          - upToDate
           type: object
       type: object
   version: v1alpha1

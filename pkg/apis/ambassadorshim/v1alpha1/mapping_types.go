@@ -27,12 +27,16 @@ import (
 type MappingSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Prefix  string `json:"prefix"`
+	Service string `json:"service"`
 }
 
 // MappingStatus defines the observed state of Mapping
 type MappingStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Configured bool `json:"configured"`
+	UpToDate   bool `json:"upToDate"`
 }
 
 // +genclient

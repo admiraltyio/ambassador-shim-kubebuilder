@@ -150,6 +150,8 @@ func (r *ReconcileMapping) Reconcile(request reconcile.Request) (reconcile.Resul
 	return reconcile.Result{}, err
 }
 
+// LegacyMapping is a representation of a Service annotation,
+// which can be marshalled to YAML.
 type LegacyMapping struct {
 	ApiVersion string
 	Kind       string
@@ -158,6 +160,8 @@ type LegacyMapping struct {
 	Service    string
 }
 
+// dummyService creates a Service object from a Mapping object.
+// The Service's annotations match the Mapping's spec.
 func dummyService(m *ambassadorshimv1alpha1.Mapping) (*corev1.Service, error) {
 	// Let's build the annotation as a struct,
 	// before marshalling it to YAML.
@@ -178,9 +182,6 @@ func dummyService(m *ambassadorshimv1alpha1.Mapping) (*corev1.Service, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.Name + "-ambassadorshim",
 			Namespace: m.Namespace,
-			// OwnerReferences: []metav1.OwnerReference{
-			// 	*metav1.NewControllerRef(m, m.GroupVersionKind()),
-			// },
 			Annotations: map[string]string{
 				"getambassador.io/config": string(y),
 			},

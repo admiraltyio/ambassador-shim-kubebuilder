@@ -18,11 +18,10 @@ package mapping
 
 import (
 	"context"
-	"log"
 	"reflect"
 
 	ambassadorshimv1alpha1 "admiralty.io/ambassador-shim-kubebuilder/pkg/apis/ambassadorshim/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
+	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,14 +36,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
-
 // Add creates a new Mapping Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this ambassadorshim.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
@@ -56,21 +49,17 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
 	c, err := controller.New("mapping-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to Mapping
 	err = c.Watch(&source.Kind{Type: &ambassadorshimv1alpha1.Mapping{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by Mapping - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &ambassadorshimv1alpha1.Mapping{},
 	})
@@ -91,76 +80,117 @@ type ReconcileMapping struct {
 
 // Reconcile reads that state of the cluster for a Mapping object and makes changes based on the state read
 // and what is in the Mapping.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ambassadorshim.admiralty.io,resources=mappings,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileMapping) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the Mapping instance
-	instance := &ambassadorshimv1alpha1.Mapping{}
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
+	m := &ambassadorshimv1alpha1.Mapping{}
+	if err := r.Get(context.TODO(), request.NamespacedName, m); err != nil {
 		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
+			// The Mapping was deleted:
+			// garbage collection will take care of the dummy Service.
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
+		// Something actually went wrong.
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
+	// generate the desired Service from the Mapping
+	ds, err := dummyService(m)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if err := controllerutil.SetControllerReference(m, ds, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// get the observed Service, if any
+	os := &corev1.Service{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: ds.Name, Namespace: ds.Namespace}, os); err != nil {
+		// if the Service doesn't exist, create it
+		// (update Mapping status for current observed state)
+		if errors.IsNotFound(err) {
+			m.Status = ambassadorshimv1alpha1.MappingStatus{
+				Configured: false,
+				UpToDate:   false,
+			}
+			err := r.Update(context.TODO(), m)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			err = r.Create(context.TODO(), ds)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, err
+	}
+
+	// if the Service exist and its annotation matches the MappingSpec
+	// do nothing but update the Mapping status
+	if reflect.DeepEqual(ds.Annotations, os.Annotations) {
+		m.Status = ambassadorshimv1alpha1.MappingStatus{
+			Configured: true,
+			UpToDate:   true,
+		}
+		err := r.Update(context.TODO(), m)
+		return reconcile.Result{}, err
+	}
+
+	// if the Service exists but its annotation doesn't match
+	// update it accordingly
+	m.Status = ambassadorshimv1alpha1.MappingStatus{
+		Configured: true,
+		UpToDate:   false,
+	}
+	if err := r.Update(context.TODO(), m); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	os.Annotations = ds.Annotations
+	err = r.Update(context.TODO(), os)
+	return reconcile.Result{}, err
+}
+
+type LegacyMapping struct {
+	ApiVersion string
+	Kind       string
+	Name       string
+	Prefix     string
+	Service    string
+}
+
+func dummyService(m *ambassadorshimv1alpha1.Mapping) (*corev1.Service, error) {
+	// Let's build the annotation as a struct,
+	// before marshalling it to YAML.
+	lm := LegacyMapping{
+		ApiVersion: "ambassador/v0",
+		Kind:       "Mapping",
+		Name:       m.Name,
+		Prefix:     m.Spec.Prefix,
+		Service:    m.Spec.Service,
+	}
+
+	y, err := yaml.Marshal(&lm)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
+			Name:      m.Name + "-ambassadorshim",
+			Namespace: m.Namespace,
+			// OwnerReferences: []metav1.OwnerReference{
+			// 	*metav1.NewControllerRef(m, m.GroupVersionKind()),
+			// },
+			Annotations: map[string]string{
+				"getambassador.io/config": string(y),
 			},
 		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Create(context.TODO(), deploy)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				corev1.ServicePort{Port: 80},
+			}, // dummy port (required in ServiceSpec)
+		},
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-	return reconcile.Result{}, nil
+	return s, nil
 }

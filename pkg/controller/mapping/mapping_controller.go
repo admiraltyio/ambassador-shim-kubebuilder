@@ -153,11 +153,11 @@ func (r *ReconcileMapping) Reconcile(request reconcile.Request) (reconcile.Resul
 // LegacyMapping is a representation of a Service annotation,
 // which can be marshalled to YAML.
 type LegacyMapping struct {
-	ApiVersion string
-	Kind       string
-	Name       string
-	Prefix     string
-	Service    string
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Name       string `yaml:"name"`
+	Prefix     string `yaml:"prefix"`
+	Service    string `yaml:"service"`
 }
 
 // dummyService creates a Service object from a Mapping object.
@@ -166,7 +166,7 @@ func dummyService(m *ambassadorshimv1alpha1.Mapping) (*corev1.Service, error) {
 	// Let's build the annotation as a struct,
 	// before marshalling it to YAML.
 	lm := LegacyMapping{
-		ApiVersion: "ambassador/v0",
+		APIVersion: "ambassador/v0",
 		Kind:       "Mapping",
 		Name:       m.Name,
 		Prefix:     m.Spec.Prefix,

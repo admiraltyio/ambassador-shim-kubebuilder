@@ -3,8 +3,37 @@ kind: Mapping
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: mapping-sample
+  name: foo
 spec:
-  # Add fields here
   prefix: /foo/
   service: foo
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: foo
+spec:
+  selector:
+    app: foo
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foo
+spec:
+  selector:
+    matchLabels:
+      app: foo
+  template:
+    metadata:
+      labels:
+        app: foo
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80

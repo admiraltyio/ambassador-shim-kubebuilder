@@ -6,7 +6,7 @@ Source code of the Kubebuilder experiment described on the Admiralty blog: [Kube
 
 ## Getting Started
 
-1. [Install Ambassador](https://www.getambassador.io/user-guide/install) (steps 1 and 2). *N.B.*: you will have to wait several minutes before the Ambassador Service' external IP is provisioned, but keep going, it's only blocking for step 5 below.
+1. [Install Ambassador](https://www.getambassador.io/user-guide/install) (steps 1 and 2). *N.B.*: you may have to wait a few minutes before the Ambassador Service's external IP is provisioned, but keep going, it's only blocking for step 5 below.
 1. Install ambassador-shim-kubebuilder, which consists of:
 	- a CustomResourceDefinition: Mapping,
 	- a one-replica StatefulSet: the manager, which implements the Mapping controller,
@@ -22,7 +22,7 @@ Source code of the Kubebuilder experiment described on the Admiralty blog: [Kube
 1. Verify that the Mapping was configured and is up-to-date, _i.e._, that a corresponding dummy Service was created and properly annotated:
 	```sh
 	kubectl get mapping foo -o yaml
-	kubectl get service foo-ambassador -o yaml
+	kubectl get service foo-ambassadorshim -o yaml
 	```
 1. Once the external IP from step 1 is provisioned, you can access the foo service at /foo/:
 	```sh

@@ -113,12 +113,11 @@ func (r *ReconcileMapping) Reconcile(request reconcile.Request) (reconcile.Resul
 				Configured: false,
 				UpToDate:   false,
 			}
-			err := r.Update(context.TODO(), m)
-			if err != nil {
+			if err := r.Update(context.TODO(), m); err != nil {
 				return reconcile.Result{}, err
 			}
 
-			err = r.Create(context.TODO(), ds)
+			err := r.Create(context.TODO(), ds)
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, err

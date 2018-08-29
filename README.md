@@ -1,8 +1,10 @@
-# Ambassador Mapping controller built with Kubebuilder
+# Ambassador Operator (Kubebuilder version)
 
-Source code of the Kubebuilder experiment described on the Admiralty blog: [Kubernetes Custom Resource, Controller and Operator Development Tools](https://admiralty.io/kubernetes-custom-resource-controller-and-operator-development-tools.html).
+**Project Status: Experimental**
 
 > [Ambassador](https://www.getambassador.io/), the "Kubernetes-native API gateway for microservices built on Envoy", currently pulls its configuration (mainly Mappings of URL prefixes to Kubernetes Services) [from annotations on Services](https://www.getambassador.io/reference/configuration); I wanted Ambassador to be even more Kubernetes native, so I've created a Mapping CRD and a controller that maintains a dummy Service for each Mapping, annotated according to the Mapping's Spec.
+
+From ["Kubernetes Custom Resource, Controller and Operator Development Tools"](https://admiralty.io/kubernetes-custom-resource-controller-and-operator-development-tools.html) (Admiralty blog); the post discusses Kubebuilder, Metacontroller, and the Operator SDK. As a use case, three different yet functionally equivalent Ambassador operators were created, one with each tool. This repository was built with Kubebuilder v1.0.1.
 
 ## Getting Started
 
@@ -32,4 +34,10 @@ Source code of the Kubebuilder experiment described on the Admiralty blog: [Kube
 
 ## Next Steps
 
-This shim is a proof of concept that only supports the most basic feature of Ambassador: mapping a prefix to a Service. This shim could be expanded (full Mapping Spec and Status, other CRDs, etc.) into a fully-featured side-car of Ambassador, or become part of Ambassador itself.
+This shim is a proof of concept that only supports the most basic feature of Ambassador: mapping a prefix to a Service. It could be expanded (full Mapping Spec and Status, other CRDs, etc.) into a fully-featured side-car of Ambassador, or merge with it. See the full discussion in [the blog post](https://admiralty.io/kubernetes-custom-resource-controller-and-operator-development-tools.html).
+
+## See Also
+
+- [ambassador-shim-metacontroller](https://github.com/admiraltyio/ambassador-shim-metacontroller)
+- [ambassador-shim-operator-sdk](https://github.com/admiraltyio/ambassador-shim-operator-sdk)
+
